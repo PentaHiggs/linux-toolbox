@@ -6,12 +6,12 @@ import os.path
 import os
 import sys
 import imp
+from collections import OrderedDict
 
 from typing import List, Any
 
 PATH_TO_i3config = "~/.config/i3/config"
 PATH_TO_THIS = "/usr/local/bin/i3wm_timer.py"
-
 
 def set_i3config() -> None:
     """ Makes i3wm use this script. """
@@ -49,7 +49,7 @@ def bufferfree_print(line) -> None:
     sys.stdout.flush()
 
 
-def init_modules(pathname: str) -> List[Any]:
+def init_modules(pathname):
     """ Loads python classes from scripts from given directory """
     if not os.path.isabs(pathname):
         pathname = os.path.join(os.environ['HOME'], pathname)
@@ -62,8 +62,12 @@ def init_modules(pathname: str) -> List[Any]:
             for (dirpath, dirnames, filenames) in os.walk(pathname):
                 filename_list.extend(filenames)
 
+            filename_list = [os.path.join(pathname, fn) for fn in filename_list]
             modules = []
+
             for filename in filename_list:
+                # TODO: Potentially this needs to be in a try block as well.
+                os.stat(filename).st_mtime
                 try:
                     with open(filename) as f:
                         # TODO: change this to use importlib instead.
@@ -87,6 +91,8 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--i3wm', help='not for use by end-user', action="store_true")
     args = parser.parse_args()
 
+    def load_runners():
+
     if args.i3wm:
         # Start up the scripts, run their runner.__init__()'s
         runners = init_modules(args.directory)
@@ -98,7 +104,6 @@ if __name__ == '__main__':
         bufferfree_print(read_line())
 
         while True:
-            # TODO: Should check if scripts have been changed since start
             line, prefix = read_line(), ''
 
             if line.startswith(','):
@@ -106,6 +111,6 @@ if __name__ == '__main__':
 
             j = json.loads(line)
             for i, runner in enumerate(runners):
-                j.insert(i, runner.produce_json())
+                j.insert(i, runner.json())
 
             bufferfree_print(prefix + json.dumps(j))
